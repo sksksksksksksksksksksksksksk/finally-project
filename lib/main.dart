@@ -26,9 +26,13 @@ void main() async {
   runApp(const MyApp());
 }
 
-// Router configuration
-final GoRouter _router = GoRouter(
-  routes: <RouteBase>[
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  // Router configuration
+  static final GoRouter _router = GoRouter(
+    routes: <RouteBase>[
     GoRoute(
       path: '/',
       builder: (BuildContext context, GoRouterState state) {
@@ -127,9 +131,6 @@ final GoRouter _router = GoRouter(
     return null;
   },
 );
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

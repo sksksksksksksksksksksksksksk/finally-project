@@ -3,11 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
 import 'services/role_service.dart';
-import 'screens/welcome_screen.dart';
-import 'screens/farmer_home_screen.dart';
-import 'screens/distributor_home_screen.dart';
-import 'screens/retailer_home_screen.dart';
-import 'screens/consumer_home_screen.dart';
 
 class AuthWrapper extends StatelessWidget {
   final RoleService _roleService = RoleService();

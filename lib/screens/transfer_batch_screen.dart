@@ -169,7 +169,7 @@ class _TransferBatchScreenState extends State<TransferBatchScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _transferToOrgMspId,
+            initialValue: _transferToOrgMspId,
             hint: const Text('Transfer To (Organization)'),
             decoration: const InputDecoration(border: OutlineInputBorder()),
             onChanged: (String? newValue) {

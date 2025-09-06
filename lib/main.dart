@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
-import 'auth_wrapper.dart';
+import 'services/role_service.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/registration_screen.dart';
@@ -23,114 +25,124 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+  late final StreamSubscription<dynamic> _subscription;
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+   MyApp({super.key});
 
-  // Router configuration
-  static final GoRouter _router = GoRouter(
+  final RoleService _roleService = RoleService();
+
+  late final GoRouter _router = GoRouter(
+    refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
     routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return AuthWrapper();
-      },
-    ),
-    GoRoute(
-      path: '/welcome',
-      builder: (BuildContext context, GoRouterState state) {
-        return const WelcomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (BuildContext context, GoRouterState state) {
-        return const LoginScreen();
-      },
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (BuildContext context, GoRouterState state) {
-        return const RegistrationScreen();
-      },
-    ),
-    GoRoute(
-      path: '/farmer_home',
-      builder: (BuildContext context, GoRouterState state) {
-        return const FarmerHomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/distributor_home',
-      builder: (BuildContext context, GoRouterState state) {
-        return const DistributorHomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/retailer_home',
-      builder: (BuildContext context, GoRouterState state) {
-        return const RetailerHomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/consumer_home',
-      builder: (BuildContext context, GoRouterState state) {
-        return const ConsumerHomeScreen();
-      },
-    ),
-    GoRoute(
-      path: '/create_batch',
-      builder: (BuildContext context, GoRouterState state) {
-        return const CreateBatchScreen();
-      },
-    ),
-    GoRoute(
-      path: '/qr_display/:batchId',
-      builder: (BuildContext context, GoRouterState state) {
-        final String batchId = state.pathParameters['batchId']!;
-        return QrDisplayScreen(batchId: batchId);
-      },
-    ),
-    GoRoute(
-      path: '/transfer_batch',
-      builder: (BuildContext context, GoRouterState state) {
-        return const TransferBatchScreen();
-      },
-    ),
-    GoRoute(
-      path: '/consumer_qr_scanner',
-      builder: (BuildContext context, GoRouterState state) {
-        return const ConsumerQrScannerScreen();
-      },
-    ),
-    GoRoute(
-      path: '/batch_history/:batchId',
-      builder: (BuildContext context, GoRouterState state) {
-        final String batchId = state.pathParameters['batchId']!;
-        return ConsumerBatchHistoryScreen(batchId: batchId);
-      },
-    ),
-  ],
-   redirect: (BuildContext context, GoRouterState state) {
-    final bool loggedIn = FirebaseAuth.instance.currentUser != null;
-    final bool loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register' || state.matchedLocation == '/welcome';
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegistrationScreen(),
+      ),
+      GoRoute(
+        path: '/farmer_home',
+        builder: (context, state) => const FarmerHomeScreen(),
+      ),
+      GoRoute(
+        path: '/distributor_home',
+        builder: (context, state) => const DistributorHomeScreen(),
+      ),
+      GoRoute(
+        path: '/retailer_home',
+        builder: (context, state) => const RetailerHomeScreen(),
+      ),
+      GoRoute(
+        path: '/consumer_home',
+        builder: (context, state) => const ConsumerHomeScreen(),
+      ),
+       GoRoute(
+        path: '/create_batch',
+        builder: (BuildContext context, GoRouterState state) {
+          return const CreateBatchScreen();
+        },
+      ),
+      GoRoute(
+        path: '/qr_display/:batchId',
+        builder: (BuildContext context, GoRouterState state) {
+          final String batchId = state.pathParameters['batchId']!;
+          return QrDisplayScreen(batchId: batchId);
+        },
+      ),
+      GoRoute(
+        path: '/transfer_batch',
+        builder: (BuildContext context, GoRouterState state) {
+          return const TransferBatchScreen();
+        },
+      ),
+      GoRoute(
+        path: '/consumer_qr_scanner',
+        builder: (BuildContext context, GoRouterState state) {
+          return const ConsumerQrScannerScreen();
+        },
+      ),
+      GoRoute(
+        path: '/batch_history/:batchId',
+        builder: (BuildContext context, GoRouterState state) {
+          final String batchId = state.pathParameters['batchId']!;
+          return ConsumerBatchHistoryScreen(batchId: batchId);
+        },
+      ),
+    ],
+    redirect: (BuildContext context, GoRouterState state) {
+      final user = FirebaseAuth.instance.currentUser;
+      final bool loggedIn = user != null;
+      final String location = state.matchedLocation;
 
-    // If user is not logged in and not on a login/register page, redirect to welcome
-    if (!loggedIn && !loggingIn) {
-      return '/welcome';
-    }
+      final isAuthPage = location == '/welcome' || location == '/login' || location == '/register';
+      final isRoot = location == '/';
 
-    // If user is logged in and tries to access login/register, redirect to home
-    if (loggedIn && loggingIn) {
-      return '/';
-    }
+      if (!loggedIn) {
+        return isAuthPage ? null : '/welcome';
+      }
 
-    return null;
-  },
-);
+      if (loggedIn && (isAuthPage || isRoot)) {
+        final role = _roleService.getRoleForEmail(user.email!);
+        switch (role) {
+          case AppRole.farmer:
+            return '/farmer_home';
+          case AppRole.distributor:
+            return '/distributor_home';
+          case AppRole.retailer:
+            return '/retailer_home';
+          case AppRole.consumer:
+            return '/consumer_home';
+        }
+      }
+
+      return null;
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +152,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-         scaffoldBackgroundColor: Colors.green[50],
+        scaffoldBackgroundColor: Colors.green[50],
         appBarTheme: AppBarTheme(
           backgroundColor: Colors.green[700],
           foregroundColor: Colors.white,

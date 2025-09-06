@@ -1,17 +1,15 @@
-
 enum AppRole { farmer, distributor, retailer, consumer }
 
 class RoleService {
-  // In a real app, this would be determined from Firebase custom claims
-  // or another authoritative source.
-  final Map<String, AppRole> _userRoles = {
-    'farmer@test.com': AppRole.farmer,
-    'distributor@test.com': AppRole.distributor,
-    'retailer@test.com': AppRole.retailer,
-    'consumer@test.com': AppRole.consumer,
-  };
-
   AppRole getRoleForEmail(String email) {
-    return _userRoles[email] ?? AppRole.consumer; // Default to consumer
+    if (email.endsWith('@farmer.com')) {
+      return AppRole.farmer;
+    } else if (email.endsWith('@distributor.com')) {
+      return AppRole.distributor;
+    } else if (email.endsWith('@retailer.com')) {
+      return AppRole.retailer;
+    } else {
+      return AppRole.consumer;
+    }
   }
 }

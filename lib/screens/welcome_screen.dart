@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -46,6 +47,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 50),
               ElevatedButton(
+                key: const Key('register_button'), // Key for testing
                 onPressed: () => context.go('/register'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
@@ -59,6 +61,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               OutlinedButton(
+                key: const Key('login_button'), // Key for testing
                 onPressed: () => context.go('/login'),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white, width: 2),

@@ -1,81 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/api_client.dart';
 
-class FarmerHomeScreen extends StatelessWidget {
+class FarmerHomeScreen extends StatefulWidget {
   const FarmerHomeScreen({super.key});
 
-  void _seedData(BuildContext context) async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Seed Demo Data?'),
-          content: const Text(
-              'This will create a full sample supply chain journey (Farm -> Distributor -> Retailer). Do you want to proceed?'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Seed Data'),
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close the confirmation dialog
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Dialog(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(width: 20),
-                            Text("Seeding Blockchain..."),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
+  @override
+  State<FarmerHomeScreen> createState() => _FarmerHomeScreenState();
+}
 
-                try {
-                  final ApiClient apiClient = ApiClient();
-                  await apiClient.seedDemoData();
+class _FarmerHomeScreenState extends State<FarmerHomeScreen> {
+  final ApiClient _apiClient = ApiClient();
+  bool _isSeeding = false;
 
-                  if (context.mounted) {
-                    Navigator.of(context).pop(); // Close the loading dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Demo data seeded successfully!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    Navigator.of(context).pop(); // Close the loading dialog
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error seeding data: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
+  Future<void> _seedData() async {
+    setState(() {
+      _isSeeding = true;
+    });
+    try {
+      await _apiClient.seedDemoData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Demo data seeded successfully!'), backgroundColor: Colors.green),
         );
-      },
-    );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error seeding data: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSeeding = false;
+        });
+      }
+    }
   }
 
   @override
@@ -88,65 +51,80 @@ class FarmerHomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
+            onPressed: () => FirebaseAuth.instance.signOut(),
           ),
         ],
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              'Welcome, ${user?.email ?? 'Farmer'}',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 30),
+            _buildDashboardCard(
+              icon: Icons.add_circle,
+              title: 'Create New Batch',
+              subtitle: 'Start a new crop batch and generate a QR code.',
+              onTap: () => context.go('/create_batch'),
+              color: Colors.green,
+            ),
+            const SizedBox(height: 20),
+            _buildDashboardCard(
+              icon: Icons.qr_code_scanner,
+              title: 'Scan & Transfer Batch',
+              subtitle: 'Scan a QR code to transfer ownership of a batch.',
+              onTap: () => context.go('/transfer_batch'),
+              color: Colors.blue,
+            ),
+            const Spacer(),
+            const Divider(height: 40),
+            const Text(
+              'For Demo Purposes',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: 10),
+            _isSeeding
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton.icon(
+                    icon: const Icon(Icons.cloud_upload),
+                    label: const Text('Seed Demo Data'),
+                    onPressed: _seedData,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap, required Color color}) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Welcome, ${user?.email ?? 'Farmer'}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Create New Batch'),
-                onPressed: () => context.go('/create_batch'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  textStyle: const TextStyle(fontSize: 16),
+          padding: const EdgeInsets.all(20.0),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 40, color: color),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Scan & Transfer Batch'),
-                onPressed: () => context.go('/transfer_batch'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[600],
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  textStyle: const TextStyle(fontSize: 16),
-                ),
-              ),
-              const SizedBox(height: 40),
-              const Divider(),
-              const SizedBox(height: 20),
-              const Text(
-                'For Demo Purposes',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.data_usage),
-                label: const Text('Seed Demo Data'),
-                onPressed: () => _seedData(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[700],
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  textStyle: const TextStyle(fontSize: 16),
-                ),
-              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.grey),
             ],
           ),
         ),

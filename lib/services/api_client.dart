@@ -116,6 +116,7 @@ class ApiClient {
   }
 
   Future<void> seedDemoData() async {
+    String? batchId;
     try {
       // 1. Farmer (current user) creates a new batch
       final createBatchResponse = await createBatch({
@@ -127,7 +128,10 @@ class ApiClient {
         'clientTimestampIso': DateTime.now().toUtc().toIso8601String(),
       });
 
-      final String batchId = createBatchResponse['batchId'];
+      batchId = createBatchResponse['batchId'];
+      if (batchId == null) {
+        throw Exception('Batch ID was null after creation.');
+      }
 
       await Future.delayed(const Duration(seconds: 1));
 
@@ -141,7 +145,11 @@ class ApiClient {
 
     } catch (e) {
       print('Error during data seeding: $e');
-      throw Exception('Failed to seed demo data. Check API client logs.');
+      if (batchId == null) {
+        throw Exception('Failed to create the initial batch. Check backend logs.');
+      } else {
+        throw Exception('Failed during transfer for batch $batchId. Check backend logs.');
+      }
     }
   }
 }

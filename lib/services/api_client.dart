@@ -1,10 +1,22 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 class ApiClient {
-  final String _baseUrl = "http://10.0.2.2:8080"; // Assuming local development server
+  late final String _baseUrl;
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
+  ApiClient() {
+    if (kIsWeb) {
+      _baseUrl = "http://localhost:8080";
+    } else if (Platform.isAndroid) {
+      _baseUrl = "http://10.0.2.2:8080";
+    } else {
+      _baseUrl = "http://localhost:8080";
+    }
+  }
 
   Future<String?> _getIdToken() async {
     final User? user = _firebaseAuth.currentUser;

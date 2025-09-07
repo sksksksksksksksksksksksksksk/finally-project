@@ -1,7 +1,8 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Import for PlatformException
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:developer' as developer;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,25 +21,76 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        await _auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-        // Navigate to the farmer's home screen after successful login
-        if (mounted) context.go('/farmer_home');
-      } on FirebaseAuthException catch (e) {
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (mounted) context.go('/farmer_home');
+
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'No user found for that email.';
+          break;
+        case 'wrong-password':
+        case 'invalid-credential': // Catches modern Firebase Auth SDK error
+          message = 'Incorrect email or password. Please try again.';
+          break;
+        case 'user-disabled':
+          message = 'This user account has been disabled.';
+          break;
+        case 'invalid-email':
+          message = 'The email address is badly formatted.';
+          break;
+        default:
+          message = 'An unexpected error occurred during login.';
+          developer.log('Login error: ${e.code}', name: 'com.example.myapp.login', error: e);
+      }
+      if (mounted) {
         setState(() {
-          _errorMessage = e.message;
+          _errorMessage = message;
         });
-      } finally {
+      }
+    } on PlatformException catch (e) {
+        // This specifically catches the error from your screenshot.
+        String message;
+        if (e.code == 'ERROR_INVALID_CREDENTIAL') {
+            message = 'Incorrect email or password. Please try again.';
+        } else {
+            message = 'An unexpected platform error occurred. Please try again.';
+            developer.log(
+                'Platform Error during login: ${e.code}',
+                name: 'com.example.myapp.login',
+                error: e,
+            );
+        }
+        if (mounted) {
+            setState(() {
+                _errorMessage = message;
+            });
+        }
+    } catch (e) {
+      developer.log(
+        'A generic error occurred during login.',
+        name: 'com.example.myapp.login',
+        error: e,
+      );
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'An unexpected error occurred. Please try again.';
+        });
+      }
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
